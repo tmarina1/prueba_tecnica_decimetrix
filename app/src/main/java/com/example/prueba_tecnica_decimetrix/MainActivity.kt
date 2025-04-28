@@ -208,7 +208,54 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showPointNameDialog(point: PointMap) {
+        val input = EditText(this)
+        val favoriteCheckbox = CheckBox(this)
+        favoriteCheckbox.text = "Guardar como favorito"
 
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(input)
+            addView(favoriteCheckbox)
+        }
+
+        val builder = AlertDialog.Builder(this)
+            .setTitle("Nombre del Punto")
+            .setView(layout)
+            .setPositiveButton("Guardar") { dialog, _ ->
+                val pointName = input.text.toString()
+                val isFavorite = favoriteCheckbox.isChecked
+                addPointToMap(point, pointName, isFavorite)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar") { dialog, _ ->
+                dialog.cancel()
+            }
+        builder.show()
+    }
+
+    private fun addPointToMap(point: PointMap, name: String, isFavorite: Boolean) {
+        mapView.getMapboxMap().getStyle { style ->
+            val sourceId = "point-source-${placedPoints.size}"
+            val layerId = "point-layer-${placedPoints.size}"
+            placedPoints.add(Triple(point, name, isFavorite)) // Almacena si es favorito
+
+            style.addSource(geoJsonSource(sourceId) {
+                geometry(point)
+            })
+
+            style.addLayer(symbolLayer(layerId, sourceId) {
+                iconImage("red_marker")
+                textField(name)
+                textSize(12.0)
+                textAnchor(TextAnchor.BOTTOM)
+                textOffset(listOf(0.0, -0.7))
+            })
+
+            if (isFavorite) {
+                DataBase.saveFavoritePoint(point, name)
+            }
+        }
 
     /*
     override fun onRequestPermissionsResult(
