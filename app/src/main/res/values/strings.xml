@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">prueba_tecnica_decimetrix</string>
+    <string name="mapbox_access_token">pk.eyJ1IjoidG1hcmluYTEiLCJhIjoiY21hMGFuZnQzMG15ODJ0cHdubnVzM2xhdSJ9.EdrOcORghftfgNyaiD_ZYA</string>
+    <string name="cambiar_estilo_de_mapa">Cambiar estilo de mapa</string>
+    <string name="centrar_en_ubicacion">centrar_en_ubicacion</string>
+    <string name="acercar_mapa">acercar_mapa</string>
+    <string name="alejar_mapa">alejar_mapa</string>
+</resources>
