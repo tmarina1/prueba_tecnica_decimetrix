@@ -19,7 +19,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.res.ResourcesCompat
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mapbox.geojson.Point as PointMap
-import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
 import com.mapbox.maps.plugin.annotation.annotations
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
 import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
@@ -31,9 +30,6 @@ import com.mapbox.maps.extension.style.layers.properties.generated.IconAnchor
 import com.mapbox.maps.extension.style.layers.properties.generated.TextAnchor
 import com.mapbox.maps.extension.style.style
 
-import android.widget.CheckBox
-import android.widget.EditText
-import android.widget.LinearLayout
 import com.example.prueba_tecnica_decimetrix.DataBaseConection
 import com.example.prueba_tecnica_decimetrix.model.FavoritePoint
 
@@ -65,39 +61,7 @@ class MainActivity : AppCompatActivity() {
         fabZoomOut = findViewById(R.id.fabZoomOut)
         fabFavorites = findViewById(R.id.fabFavorites)
 
-        mapView.getMapboxMap().loadStyle(styleExtension = style(Style.MAPBOX_STREETS) {
-            +geoJsonSource("places-source") {
-                url("https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_50m_populated_places_simple.geojson")
-            }
-
-            +symbolLayer("places-layer", "places-source") {
-                iconImage("marker")
-                iconAnchor(IconAnchor.BOTTOM)
-                textField("{name}")
-                textAnchor(TextAnchor.TOP)
-            }
-        }) { style ->
-            Log.d("MapboxStyle", "Style loaded successfully")
-            val drawable = ResourcesCompat.getDrawable(resources, R.drawable.red_marker, null)
-            if (drawable is BitmapDrawable) {
-                style.addImage("marker", drawable.bitmap)
-            }
-
-            mapView.getMapboxMap().setCamera(
-                CameraOptions.Builder()
-                    .center(PointMap.fromLngLat(0.0, 0.0))
-                    .zoom(2.0)
-                    .build()
-            )
-
-            if (checkLocationPermissions()) {
-                enableLocationComponent(style)
-            } else {
-                requestLocationPermissions()
-            }
-
-            loadFavoritesFromDatabase()
-        }
+        loadMapStyle(Style.MAPBOX_STREETS)
 
         mapView.getMapboxMap().addOnMapLongClickListener { point ->
             val builder = androidx.appcompat.app.AlertDialog.Builder(this)
@@ -190,7 +154,7 @@ class MainActivity : AppCompatActivity() {
         val annotationApi = mapView.annotations
         val pointAnnotationManager = annotationApi.createPointAnnotationManager()
 
-        val bitmap = (ResourcesCompat.getDrawable(resources, R.drawable.red_marker, null) as BitmapDrawable).bitmap
+        val bitmap = (ResourcesCompat.getDrawable(resources, R.drawable.yellow_marker, null) as BitmapDrawable).bitmap
 
         val pointAnnotationOptions = PointAnnotationOptions()
             .withPoint(PointMap.fromLngLat(longitude, latitude))
@@ -203,16 +167,58 @@ class MainActivity : AppCompatActivity() {
         val builder = AlertDialog.Builder(this)
             .setTitle("Seleccionar Estilo de Mapa")
             .setItems(styles) { dialog, which ->
-                when (which) {
-                    0 -> mapView.getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS)
-                    1 -> mapView.getMapboxMap().loadStyleUri(Style.SATELLITE)
-                    2 -> mapView.getMapboxMap().loadStyleUri(Style.SATELLITE_STREETS)
-                    3 -> mapView.getMapboxMap().loadStyleUri(Style.DARK)
-                    4 -> mapView.getMapboxMap().loadStyleUri(Style.LIGHT)
+                val styleUri = when (which) {
+                    0 -> Style.MAPBOX_STREETS
+                    1 -> Style.SATELLITE
+                    2 -> Style.SATELLITE_STREETS
+                    3 -> Style.DARK
+                    4 -> Style.LIGHT
+                    else -> Style.MAPBOX_STREETS
                 }
+
+                loadMapStyle(styleUri)
+
                 dialog.dismiss()
             }
         builder.show()
+    }
+
+    private fun loadMapStyle(styleUri: String) {
+        mapView.getMapboxMap().loadStyle(styleExtension = style(styleUri) {
+            +geoJsonSource("places-source") {
+                url("https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_50m_populated_places_simple.geojson")
+            }
+
+            +symbolLayer("places-layer", "places-source") {
+                iconImage("marker")
+                iconAnchor(IconAnchor.BOTTOM)
+                textField("{name}")
+                textAnchor(TextAnchor.TOP)
+            }
+        }) { style ->
+            Log.d("MapboxStyle", "Style loaded successfully: $styleUri")
+
+            val drawable = ResourcesCompat.getDrawable(resources, R.drawable.red_marker, null)
+            if (drawable is BitmapDrawable) {
+                style.addImage("marker", drawable.bitmap)
+            }
+
+            if (styleUri == Style.MAPBOX_STREETS && lastKnownUserPosition == null) {
+                mapView.getMapboxMap().setCamera(
+                    CameraOptions.Builder()
+                        .center(PointMap.fromLngLat(0.0, 0.0))
+                        .zoom(2.0)
+                        .build()
+                )
+
+                if (checkLocationPermissions()) {
+                    enableLocationComponent(style)
+                } else {
+                    requestLocationPermissions()
+                }
+            }
+            loadFavoritesFromDatabase()
+        }
     }
 
     private fun checkLocationPermissions(): Boolean {
