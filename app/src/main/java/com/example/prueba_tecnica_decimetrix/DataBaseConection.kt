@@ -61,5 +61,4 @@ class DataBaseConection (context: Context) :
         db.close()
         return favoriteList
     }
-
 }

@@ -30,7 +30,6 @@ import com.mapbox.maps.extension.style.layers.properties.generated.IconAnchor
 import com.mapbox.maps.extension.style.layers.properties.generated.TextAnchor
 import com.mapbox.maps.extension.style.style
 
-import com.example.prueba_tecnica_decimetrix.DataBaseConection
 import com.example.prueba_tecnica_decimetrix.model.FavoritePoint
 
 private const val ZOOM_INCREMENT = 1.0
@@ -282,18 +281,4 @@ class MainActivity : AppCompatActivity() {
             .build()
         mapView.getMapboxMap().setCamera(cameraOptions)
     }
-
-    /*
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1 && grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            enableLocationComponent()
-        }
-    }
-    */
 }
