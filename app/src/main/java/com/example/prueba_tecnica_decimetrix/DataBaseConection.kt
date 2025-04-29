@@ -17,8 +17,10 @@ private const val COLUMN_LONGITUDE = "longitude"
 private const val COLUMN_LATITUDE = "latitude"
 
 
-class DataBaseConection (context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION){
-    override fun onCreate(db: SQLiteDatabase) {
+class DataBaseConection (context: Context) :
+    SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION){
+
+        override fun onCreate(db: SQLiteDatabase) {
         val createTableQuery = "CREATE TABLE $TABLE_NAME ($COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, $COLUMN_NAME TEXT, $COLUMN_LONGITUDE REAL, $COLUMN_LATITUDE REAL)"
         db.execSQL(createTableQuery)
     }
@@ -28,16 +30,15 @@ class DataBaseConection (context: Context) : SQLiteOpenHelper(context, DATABASE_
         onCreate(db)
     }
 
-    fun saveFavoritePoint(point: PointMap, name: String): Long {
+    fun saveFavoritePoint(place: FavoritePoint) {
         val db = writableDatabase
         val values = ContentValues().apply {
-            put(COLUMN_NAME, name)
-            put(COLUMN_LONGITUDE, point.longitude())
-            put(COLUMN_LATITUDE, point.latitude())
+            put(COLUMN_NAME, place.name)
+            put(COLUMN_LONGITUDE, place.longitude)
+            put(COLUMN_LATITUDE, place.latitude)
         }
-        val newRowId = db.insert(TABLE_NAME, null, values)
+        db.insert(TABLE_NAME, null, values)
         db.close()
-        return newRowId
     }
 
     fun getAllFavorites(): MutableList<FavoritePoint> {
@@ -47,7 +48,7 @@ class DataBaseConection (context: Context) : SQLiteOpenHelper(context, DATABASE_
         cursor.use {
             if (it.moveToFirst()) {
                 while (!it.isAfterLast) {
-                    val id = it.getLong(it.getColumnIndexOrThrow(COLUMN_ID))
+                    val id = it.getInt(it.getColumnIndexOrThrow(COLUMN_ID))
                     val name = it.getString(it.getColumnIndexOrThrow(COLUMN_NAME))
                     val longitude = it.getDouble(it.getColumnIndexOrThrow(COLUMN_LONGITUDE))
                     val latitude = it.getDouble(it.getColumnIndexOrThrow(COLUMN_LATITUDE))
@@ -56,6 +57,7 @@ class DataBaseConection (context: Context) : SQLiteOpenHelper(context, DATABASE_
                 }
             }
         }
+        cursor.close()
         db.close()
         return favoriteList
     }

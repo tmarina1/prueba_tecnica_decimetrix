@@ -35,6 +35,7 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import com.example.prueba_tecnica_decimetrix.DataBaseConection
+import com.example.prueba_tecnica_decimetrix.model.FavoritePoint
 
 private const val ZOOM_INCREMENT = 1.0
 
@@ -47,17 +48,22 @@ class MainActivity : AppCompatActivity() {
     private var lastKnownUserPosition: PointMap? = null
     private lateinit var fabZoomIn: FloatingActionButton
     private lateinit var fabZoomOut: FloatingActionButton
-    private lateinit var DataBase: DataBaseConection
+    private lateinit var fabFavorites: FloatingActionButton
+    private lateinit var dataBase: DataBaseConection
+    private val favoritePlaces = mutableListOf<FavoritePoint>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        dataBase = DataBaseConection(this)
 
         mapView = findViewById(R.id.mapView)
         fabStyles = findViewById(R.id.fabStyles)
         fabCenterLocation = findViewById(R.id.fabCenterLocation)
         fabZoomIn = findViewById(R.id.fabZoomIn)
         fabZoomOut = findViewById(R.id.fabZoomOut)
+        fabFavorites = findViewById(R.id.fabFavorites)
 
         mapView.getMapboxMap().loadStyle(styleExtension = style(Style.MAPBOX_STREETS) {
             +geoJsonSource("places-source") {
@@ -89,12 +95,33 @@ class MainActivity : AppCompatActivity() {
             } else {
                 requestLocationPermissions()
             }
+
+            loadFavoritesFromDatabase()
         }
 
+        mapView.getMapboxMap().addOnMapLongClickListener { point ->
+            val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+            builder.setTitle("Agregar favorito")
 
-        mapView.getMapboxMap().addOnMapLongClickListener() { point ->
-            Log.d("MapClick", "Long Click Detected at: Long=${point.longitude()}, Lat=${point.latitude()}")
-            addMarker(point.longitude(), point.latitude())
+            val input = android.widget.EditText(this)
+            builder.setView(input)
+
+            builder.setPositiveButton("Guardar") { dialog, which ->
+                val name = input.text.toString()
+                if (name.isNotEmpty()) {
+                    val favorite = FavoritePoint(name = name, latitude = point.latitude(), longitude = point.longitude())
+                    dataBase.saveFavoritePoint(favorite)
+                    addMarker(point.longitude(), point.latitude())
+                    loadFavoritesFromDatabase()
+                }
+            }
+
+            builder.setNegativeButton("Cancelar") { dialog, which ->
+                dialog.cancel()
+            }
+
+            builder.show()
+
             true
         }
 
@@ -112,6 +139,18 @@ class MainActivity : AppCompatActivity() {
 
         fabZoomOut.setOnClickListener {
             zoomOut()
+        }
+
+        fabFavorites.setOnClickListener {
+            showFavoritesDialog()
+        }
+
+    }
+
+    private fun loadFavoritesFromDatabase() {
+        val favorites = dataBase.getAllFavorites()
+        favorites.forEach {
+            addMarker(it.longitude, it.latitude)
         }
     }
 
@@ -208,54 +247,35 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPointNameDialog(point: PointMap) {
-        val input = EditText(this)
-        val favoriteCheckbox = CheckBox(this)
-        favoriteCheckbox.text = "Guardar como favorito"
+    private fun showFavoritesDialog() {
+        val favorites = dataBase.getAllFavorites()
 
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(input)
-            addView(favoriteCheckbox)
+        if (favorites.isEmpty()) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Favoritos")
+                .setMessage("No tienes favoritos aún.")
+                .setPositiveButton("OK", null)
+                .show()
+        } else {
+            val favoriteNames = favorites.map { it.name }.toTypedArray()
+
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Favoritos")
+                .setItems(favoriteNames) { _, which ->
+                    val selectedPlace = favorites[which]
+                    centerMapOnFavorite(selectedPlace)
+                }
+                .show()
         }
-
-        val builder = AlertDialog.Builder(this)
-            .setTitle("Nombre del Punto")
-            .setView(layout)
-            .setPositiveButton("Guardar") { dialog, _ ->
-                val pointName = input.text.toString()
-                val isFavorite = favoriteCheckbox.isChecked
-                addPointToMap(point, pointName, isFavorite)
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancelar") { dialog, _ ->
-                dialog.cancel()
-            }
-        builder.show()
     }
 
-    private fun addPointToMap(point: PointMap, name: String, isFavorite: Boolean) {
-        mapView.getMapboxMap().getStyle { style ->
-            val sourceId = "point-source-${placedPoints.size}"
-            val layerId = "point-layer-${placedPoints.size}"
-            placedPoints.add(Triple(point, name, isFavorite)) // Almacena si es favorito
-
-            style.addSource(geoJsonSource(sourceId) {
-                geometry(point)
-            })
-
-            style.addLayer(symbolLayer(layerId, sourceId) {
-                iconImage("red_marker")
-                textField(name)
-                textSize(12.0)
-                textAnchor(TextAnchor.BOTTOM)
-                textOffset(listOf(0.0, -0.7))
-            })
-
-            if (isFavorite) {
-                DataBase.saveFavoritePoint(point, name)
-            }
-        }
+    private fun centerMapOnFavorite(place: FavoritePoint) {
+        val cameraOptions = CameraOptions.Builder()
+            .center(PointMap.fromLngLat(place.longitude, place.latitude))
+            .zoom(15.0)
+            .build()
+        mapView.getMapboxMap().setCamera(cameraOptions)
+    }
 
     /*
     override fun onRequestPermissionsResult(
@@ -270,5 +290,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
     */
-
 }

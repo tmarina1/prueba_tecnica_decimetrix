@@ -5,4 +5,5 @@
     <string name="centrar_en_ubicacion">centrar_en_ubicacion</string>
     <string name="acercar_mapa">acercar_mapa</string>
     <string name="alejar_mapa">alejar_mapa</string>
+    <string name="mostrar_favoritos">Mostrar Favoritos</string>
 </resources>
