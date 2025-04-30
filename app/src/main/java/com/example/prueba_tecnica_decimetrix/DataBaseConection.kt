@@ -6,11 +6,11 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.example.prueba_tecnica_decimetrix.model.FavoritePoint
-import com.mapbox.geojson.Point as PointMap
 
 private const val DATABASE_NAME = "favorite_points.db"
 private const val DATABASE_VERSION = 1
 private const val TABLE_NAME = "favorites"
+
 private const val COLUMN_ID = "id"
 private const val COLUMN_NAME = "name"
 private const val COLUMN_LONGITUDE = "longitude"

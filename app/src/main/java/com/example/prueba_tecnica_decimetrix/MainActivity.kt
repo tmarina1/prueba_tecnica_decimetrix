@@ -7,7 +7,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AppCompatActivity
 import com.mapbox.maps.MapView
-import com.mapbox.maps.MapInitOptions
 import com.mapbox.maps.Style
 import com.mapbox.maps.CameraOptions
 import androidx.core.content.ContextCompat
@@ -36,7 +35,6 @@ import com.example.prueba_tecnica_decimetrix.model.FavoritePoint
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotation
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
 
-
 private const val ZOOM_INCREMENT = 1.0
 
 class MainActivity : AppCompatActivity() {
@@ -50,7 +48,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fabZoomOut: FloatingActionButton
     private lateinit var fabFavorites: FloatingActionButton
     private lateinit var dataBase: DataBaseConection
-    private val favoritePlaces = mutableListOf<FavoritePoint>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,6 +88,11 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    /**
+     * Este método se encarga de detectar pulsaciones largas en el mapa.
+     * Cuando el usuario mantiene presionado un punto en el mapa, se muestra
+     * un diálogo para seleccionar el tipo de punto a crear.
+     */
     private fun setupMapClickListener() {
         mapView.getMapboxMap().addOnMapLongClickListener { point ->
             showPointTypeSelectionDialog(point)
@@ -98,6 +100,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+    * Este método se encarga de extraer los marcadores favoritos del usuario almacenados en la base de datos,
+     * además de llamar a las funciones encargadas de agregar los marcadores en el mapa.
+    * */
     private fun loadFavoritesFromDatabase() {
         val favorites = dataBase.getAllFavorites()
         favorites.forEach {
@@ -109,18 +115,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+    /**
+    * Este método se encarga de gestionar el aumento de zoom en una unidad.
+    * */
     private fun zoomIn() {
-        val currentZoom = mapView.getMapboxMap().cameraState.zoom
-        val newZoom = currentZoom + ZOOM_INCREMENT
+        val actualZoom = mapView.getMapboxMap().cameraState.zoom
+        val newZoom = actualZoom + ZOOM_INCREMENT
         updateCameraZoom(newZoom)
     }
 
+    /**
+    *  Este método se encarga de gestionar la disminución de zoom en una unidad.
+    * */
     private fun zoomOut() {
-        val currentZoom = mapView.getMapboxMap().cameraState.zoom
-        val newZoom = currentZoom - ZOOM_INCREMENT
+        val actualZoom = mapView.getMapboxMap().cameraState.zoom
+        val newZoom = actualZoom - ZOOM_INCREMENT
         updateCameraZoom(newZoom)
     }
 
+    /**
+    * Este método se encarga de aplicar el zoom definido en las dos funciones anteriores.
+    * */
     private fun updateCameraZoom(zoomLevel: Double) {
         val cameraOptions = CameraOptions.Builder()
             .zoom(zoomLevel)
@@ -131,6 +147,9 @@ class MainActivity : AppCompatActivity() {
         mapView.getMapboxMap().setCamera(cameraOptions)
     }
 
+    /**
+    * Este método se encarga de centrar el mapa en la última ubicación del usuario.
+    * */
     private fun centerOnUserLocation() {
         lastKnownUserPosition?.let { userPosition ->
             val cameraOptions = CameraOptions.Builder()
@@ -141,23 +160,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+    * Este método se encarga de agregar un marcador normal definido por el usuario en el mapa.
+    * */
     private fun addMarker(longitude: Double, latitude: Double) {
         val annotationApi = mapView.annotations
-        val pointAnnotationManager = annotationApi.createPointAnnotationManager()
+        val marker = annotationApi.createPointAnnotationManager()
 
         val bitmap = (ResourcesCompat.getDrawable(resources, R.drawable.yellow_marker, null) as BitmapDrawable).bitmap
 
-        val pointAnnotationOptions = PointAnnotationOptions()
-            .withPoint(PointMap.fromLngLat(longitude, latitude))
-            .withIconImage(bitmap)
-        pointAnnotationManager.create(pointAnnotationOptions)
+        val markerOptions = PointAnnotationOptions().withPoint(PointMap.fromLngLat(longitude, latitude)).withIconImage(bitmap)
+        marker.create(markerOptions)
     }
 
+    /*
+    * Este método se encarga de mostrar un Dialog donde el usuario puede seleccionar que tipo de estilo de mapa quiere.
+    * */
     private fun showStyleChooser() {
-        val styles = arrayOf("Streets", "Satellite", "Satellite Streets", "Dark", "Light")
+        val stylesTypes = arrayOf("Streets", "Satellite", "Satellite Streets", "Dark", "Light")
         val builder = AlertDialog.Builder(this)
-            .setTitle("Seleccionar Estilo de Mapa")
-            .setItems(styles) { dialog, which ->
+            .setTitle("Seleccionar estilo de mapa")
+            .setItems(stylesTypes) { dialog, which ->
                 val styleUri = when (which) {
                     0 -> Style.MAPBOX_STREETS
                     1 -> Style.SATELLITE
@@ -166,7 +189,6 @@ class MainActivity : AppCompatActivity() {
                     4 -> Style.LIGHT
                     else -> Style.MAPBOX_STREETS
                 }
-
                 loadMapStyle(styleUri)
 
                 dialog.dismiss()
@@ -174,6 +196,10 @@ class MainActivity : AppCompatActivity() {
         builder.show()
     }
 
+    /**
+    * Este método se encarga de cargar los puntos que se encuentran en el JSON de la URL establecida, además de
+     * invocar diferentes funciones como por ejemplo la de cargar los puntos favoritos del usuario.
+    * */
     private fun loadMapStyle(styleUri: String) {
         mapView.getMapboxMap().loadStyle(styleExtension = style(styleUri) {
             +geoJsonSource("places-source") {
@@ -189,9 +215,9 @@ class MainActivity : AppCompatActivity() {
         }) { style ->
             Log.d("MapboxStyle", "Style loaded successfully: $styleUri")
 
-            val drawable = ResourcesCompat.getDrawable(resources, R.drawable.red_marker, null)
-            if (drawable is BitmapDrawable) {
-                style.addImage("marker", drawable.bitmap)
+            val marker = ResourcesCompat.getDrawable(resources, R.drawable.red_marker, null)
+            if (marker is BitmapDrawable) {
+                style.addImage("marker", marker.bitmap)
             }
 
             if (styleUri == Style.MAPBOX_STREETS && lastKnownUserPosition == null) {
@@ -212,6 +238,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+    * Este método se encarga de validar los permisos para acceder a la ubicación del usuario.
+    * */
     private fun checkLocationPermissions(): Boolean {
         return ContextCompat.checkSelfPermission(
             this,
@@ -219,6 +248,9 @@ class MainActivity : AppCompatActivity() {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    /*
+    * Este método se encarga de solicitar permisos para acceder a la ubicación del usuario en caso de ser necesario.
+    * */
     private fun requestLocationPermissions() {
         ActivityCompat.requestPermissions(
             this,
@@ -227,6 +259,9 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+/**
+ * Este método habilita el componente de ubicación del usuario en el mapa.
+ * */
     private fun enableLocationComponent(style: Style) {
         locationComponent = mapView.location
         locationComponent.updateSettings {
@@ -244,6 +279,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+    * Este método se encarga de crear y mostrar el Dialog en donde se visualizan los puntos seleccionados como
+    * favoritos por el usuario.
+    * */
     private fun showFavoritesDialog() {
         val favorites = dataBase.getAllFavorites()
 
@@ -266,6 +305,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+    * Este método se encarga de crear y mostrar el Dialog que permite al usuario agregar marcadores en el mapa.
+    * */
     private fun showPointTypeSelectionDialog(point: PointMap) {
         val options = arrayOf("Punto Normal", "Punto de Alerta")
 
@@ -312,7 +354,9 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-
+    /**
+    * Este método se encarga de agregar un marcador tipo alerta definido por el usuario en el mapa.
+    * */
     private fun addAlertMarker(longitude: Double, latitude: Double) {
         val annotationApi = mapView.annotations
         val pointAnnotationManager = annotationApi.createPointAnnotationManager()
@@ -328,6 +372,10 @@ class MainActivity : AppCompatActivity() {
         setupPulseAnimation(annotation, pointAnnotationManager)
     }
 
+    /**
+    * Este método se encarga de definir el pulso y comportamiento
+    * que va tener los marcadores tipo alerta agregados por el usuario.
+    * */
     private fun setupPulseAnimation(annotation: PointAnnotation, manager: PointAnnotationManager) {
         val handler = Handler(Looper.getMainLooper())
         val pulseRunnable = object : Runnable {
@@ -352,6 +400,9 @@ class MainActivity : AppCompatActivity() {
         handler.post(pulseRunnable)
     }
 
+    /**
+    * Este método permite al usuario moverse entre sus marcadores favoritos, centrandolos según los seleccione.
+    * */
     private fun centerMapOnFavorite(place: FavoritePoint) {
         val cameraOptions = CameraOptions.Builder()
             .center(PointMap.fromLngLat(place.longitude, place.latitude))
