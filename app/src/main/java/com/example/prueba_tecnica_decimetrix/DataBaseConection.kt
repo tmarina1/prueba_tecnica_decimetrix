@@ -15,13 +15,13 @@ private const val COLUMN_ID = "id"
 private const val COLUMN_NAME = "name"
 private const val COLUMN_LONGITUDE = "longitude"
 private const val COLUMN_LATITUDE = "latitude"
-
+private const val COLUMN_IS_ALERT_POINT = "is_alert_point"
 
 class DataBaseConection (context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION){
 
         override fun onCreate(db: SQLiteDatabase) {
-        val createTableQuery = "CREATE TABLE $TABLE_NAME ($COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, $COLUMN_NAME TEXT, $COLUMN_LONGITUDE REAL, $COLUMN_LATITUDE REAL)"
+        val createTableQuery = "CREATE TABLE $TABLE_NAME ($COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, $COLUMN_NAME TEXT, $COLUMN_LONGITUDE REAL, $COLUMN_LATITUDE REAL, $COLUMN_IS_ALERT_POINT INTEGER)"
         db.execSQL(createTableQuery)
     }
 
@@ -36,6 +36,7 @@ class DataBaseConection (context: Context) :
             put(COLUMN_NAME, place.name)
             put(COLUMN_LONGITUDE, place.longitude)
             put(COLUMN_LATITUDE, place.latitude)
+            put(COLUMN_IS_ALERT_POINT, if (place.isAlertPoint) 1 else 0)
         }
         db.insert(TABLE_NAME, null, values)
         db.close()
@@ -52,7 +53,8 @@ class DataBaseConection (context: Context) :
                     val name = it.getString(it.getColumnIndexOrThrow(COLUMN_NAME))
                     val longitude = it.getDouble(it.getColumnIndexOrThrow(COLUMN_LONGITUDE))
                     val latitude = it.getDouble(it.getColumnIndexOrThrow(COLUMN_LATITUDE))
-                    favoriteList.add(FavoritePoint(id, name, longitude, latitude))
+                    val isAlertPoint  = it.getInt(it.getColumnIndexOrThrow(COLUMN_IS_ALERT_POINT)) == 1
+                    favoriteList.add(FavoritePoint(id, name, longitude, latitude, isAlertPoint))
                     it.moveToNext()
                 }
             }

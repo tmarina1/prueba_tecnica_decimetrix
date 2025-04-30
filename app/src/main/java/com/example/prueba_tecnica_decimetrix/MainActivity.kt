@@ -14,6 +14,8 @@ import androidx.core.content.ContextCompat
 import com.mapbox.maps.plugin.locationcomponent.LocationComponentPlugin
 import com.mapbox.maps.plugin.locationcomponent.location
 import android.graphics.drawable.BitmapDrawable
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.res.ResourcesCompat
@@ -31,6 +33,9 @@ import com.mapbox.maps.extension.style.layers.properties.generated.TextAnchor
 import com.mapbox.maps.extension.style.style
 
 import com.example.prueba_tecnica_decimetrix.model.FavoritePoint
+import com.mapbox.maps.plugin.annotation.generated.PointAnnotation
+import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
+
 
 private const val ZOOM_INCREMENT = 1.0
 
@@ -62,31 +67,7 @@ class MainActivity : AppCompatActivity() {
 
         loadMapStyle(Style.MAPBOX_STREETS)
 
-        mapView.getMapboxMap().addOnMapLongClickListener { point ->
-            val builder = androidx.appcompat.app.AlertDialog.Builder(this)
-            builder.setTitle("Agregar favorito")
-
-            val input = android.widget.EditText(this)
-            builder.setView(input)
-
-            builder.setPositiveButton("Guardar") { dialog, which ->
-                val name = input.text.toString()
-                if (name.isNotEmpty()) {
-                    val favorite = FavoritePoint(name = name, latitude = point.latitude(), longitude = point.longitude())
-                    dataBase.saveFavoritePoint(favorite)
-                    addMarker(point.longitude(), point.latitude())
-                    loadFavoritesFromDatabase()
-                }
-            }
-
-            builder.setNegativeButton("Cancelar") { dialog, which ->
-                dialog.cancel()
-            }
-
-            builder.show()
-
-            true
-        }
+        setupMapClickListener()
 
         fabStyles.setOnClickListener {
             showStyleChooser()
@@ -110,10 +91,21 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun setupMapClickListener() {
+        mapView.getMapboxMap().addOnMapLongClickListener { point ->
+            showPointTypeSelectionDialog(point)
+            true
+        }
+    }
+
     private fun loadFavoritesFromDatabase() {
         val favorites = dataBase.getAllFavorites()
         favorites.forEach {
-            addMarker(it.longitude, it.latitude)
+            if (it.isAlertPoint) {
+                addAlertMarker(it.longitude, it.latitude)
+            } else {
+                addMarker(it.longitude, it.latitude)
+            }
         }
     }
 
@@ -185,7 +177,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadMapStyle(styleUri: String) {
         mapView.getMapboxMap().loadStyle(styleExtension = style(styleUri) {
             +geoJsonSource("places-source") {
-                url("https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_50m_populated_places_simple.geojson")
+                url(getString(R.string.URL_geojson))
             }
 
             +symbolLayer("places-layer", "places-source") {
@@ -272,6 +264,92 @@ class MainActivity : AppCompatActivity() {
                 }
                 .show()
         }
+    }
+
+    private fun showPointTypeSelectionDialog(point: PointMap) {
+        val options = arrayOf("Punto Normal", "Punto de Alerta")
+
+        AlertDialog.Builder(this)
+            .setTitle("Seleccionar tipo de punto")
+            .setItems(options) { _, which ->
+                val isAlertPoint = which == 1
+
+                val builder = AlertDialog.Builder(this)
+                builder.setTitle("Agregar favorito")
+
+                val input = android.widget.EditText(this)
+                builder.setView(input)
+
+                builder.setPositiveButton("Guardar") { _, _ ->
+                    val name = input.text.toString()
+                    if (name.isNotEmpty()) {
+                        val favorite = FavoritePoint(
+                            name = name,
+                            latitude = point.latitude(),
+                            longitude = point.longitude(),
+                            isAlertPoint = isAlertPoint
+                        )
+
+                        dataBase.saveFavoritePoint(favorite)
+
+                        if (isAlertPoint) {
+                            addAlertMarker(point.longitude(), point.latitude())
+                        } else {
+                            addMarker(point.longitude(), point.latitude())
+                        }
+
+                        loadFavoritesFromDatabase()
+                    }
+                }
+
+                builder.setNegativeButton("Cancelar") { dialog, _ ->
+                    dialog.cancel()
+                }
+
+                builder.show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+
+    private fun addAlertMarker(longitude: Double, latitude: Double) {
+        val annotationApi = mapView.annotations
+        val pointAnnotationManager = annotationApi.createPointAnnotationManager()
+
+        val bitmap = (ResourcesCompat.getDrawable(resources, R.drawable.yellow_marker, null) as BitmapDrawable).bitmap
+
+        val pointAnnotationOptions = PointAnnotationOptions()
+            .withPoint(PointMap.fromLngLat(longitude, latitude))
+            .withIconImage(bitmap)
+
+        val annotation = pointAnnotationManager.create(pointAnnotationOptions)
+
+        setupPulseAnimation(annotation, pointAnnotationManager)
+    }
+
+    private fun setupPulseAnimation(annotation: PointAnnotation, manager: PointAnnotationManager) {
+        val handler = Handler(Looper.getMainLooper())
+        val pulseRunnable = object : Runnable {
+            private var scale = 1.0
+            private var increasing = true
+
+            override fun run() {
+                if (increasing) {
+                    scale += 0.05
+                    if (scale >= 1.5) increasing = false
+                } else {
+                    scale -= 0.05
+                    if (scale <= 1.0) increasing = true
+                }
+
+                annotation.iconSize = scale
+                manager.update(annotation)
+
+                handler.postDelayed(this, 50)
+            }
+        }
+        handler.post(pulseRunnable)
     }
 
     private fun centerMapOnFavorite(place: FavoritePoint) {

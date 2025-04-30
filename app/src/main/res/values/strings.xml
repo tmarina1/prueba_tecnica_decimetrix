@@ -6,4 +6,5 @@
     <string name="acercar_mapa">acercar_mapa</string>
     <string name="alejar_mapa">alejar_mapa</string>
     <string name="mostrar_favoritos">Mostrar Favoritos</string>
+    <string name="URL_geojson">https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_50m_populated_places_simple.geojson</string>
 </resources>
