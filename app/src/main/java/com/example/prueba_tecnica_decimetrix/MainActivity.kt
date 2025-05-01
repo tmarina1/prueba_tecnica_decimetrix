@@ -15,7 +15,6 @@ import com.mapbox.maps.plugin.locationcomponent.location
 import android.graphics.drawable.BitmapDrawable
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.res.ResourcesCompat
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -164,12 +163,12 @@ class MainActivity : AppCompatActivity() {
     * Este método se encarga de agregar un marcador normal definido por el usuario en el mapa.
     * */
     private fun addMarker(longitude: Double, latitude: Double) {
-        val annotationApi = mapView.annotations
-        val marker = annotationApi.createPointAnnotationManager()
+        val annotationInstance = mapView.annotations
+        val marker = annotationInstance.createPointAnnotationManager()
 
-        val bitmap = (ResourcesCompat.getDrawable(resources, R.drawable.yellow_marker, null) as BitmapDrawable).bitmap
+        val markerImage = (ResourcesCompat.getDrawable(resources, R.drawable.yellow_marker, null) as BitmapDrawable).bitmap
 
-        val markerOptions = PointAnnotationOptions().withPoint(PointMap.fromLngLat(longitude, latitude)).withIconImage(bitmap)
+        val markerOptions = PointAnnotationOptions().withPoint(PointMap.fromLngLat(longitude, latitude)).withIconImage(markerImage)
         marker.create(markerOptions)
     }
 
@@ -181,7 +180,7 @@ class MainActivity : AppCompatActivity() {
         val builder = AlertDialog.Builder(this)
             .setTitle("Seleccionar estilo de mapa")
             .setItems(stylesTypes) { dialog, which ->
-                val styleUri = when (which) {
+                val styleType = when (which) {
                     0 -> Style.MAPBOX_STREETS
                     1 -> Style.SATELLITE
                     2 -> Style.SATELLITE_STREETS
@@ -189,7 +188,7 @@ class MainActivity : AppCompatActivity() {
                     4 -> Style.LIGHT
                     else -> Style.MAPBOX_STREETS
                 }
-                loadMapStyle(styleUri)
+                loadMapStyle(styleType)
 
                 dialog.dismiss()
             }
@@ -200,8 +199,8 @@ class MainActivity : AppCompatActivity() {
     * Este método se encarga de cargar los puntos que se encuentran en el JSON de la URL establecida, además de
      * invocar diferentes funciones como por ejemplo la de cargar los puntos favoritos del usuario.
     * */
-    private fun loadMapStyle(styleUri: String) {
-        mapView.getMapboxMap().loadStyle(styleExtension = style(styleUri) {
+    private fun loadMapStyle(styleType: String) {
+        mapView.getMapboxMap().loadStyle(styleExtension = style(styleType) {
             +geoJsonSource("places-source") {
                 url(getString(R.string.URL_geojson))
             }
@@ -213,14 +212,12 @@ class MainActivity : AppCompatActivity() {
                 textAnchor(TextAnchor.TOP)
             }
         }) { style ->
-            Log.d("MapboxStyle", "Style loaded successfully: $styleUri")
-
             val marker = ResourcesCompat.getDrawable(resources, R.drawable.red_marker, null)
             if (marker is BitmapDrawable) {
                 style.addImage("marker", marker.bitmap)
             }
 
-            if (styleUri == Style.MAPBOX_STREETS && lastKnownUserPosition == null) {
+            if (styleType == Style.MAPBOX_STREETS && lastKnownUserPosition == null) {
                 mapView.getMapboxMap().setCamera(
                     CameraOptions.Builder()
                         .center(PointMap.fromLngLat(0.0, 0.0))
@@ -254,7 +251,7 @@ class MainActivity : AppCompatActivity() {
     private fun requestLocationPermissions() {
         ActivityCompat.requestPermissions(
             this,
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
             1
         )
     }
@@ -298,8 +295,8 @@ class MainActivity : AppCompatActivity() {
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Favoritos")
                 .setItems(favoriteNames) { _, which ->
-                    val selectedPlace = favorites[which]
-                    centerMapOnFavorite(selectedPlace)
+                    val selectedFavorite = favorites[which]
+                    centerMapOnFavorite(selectedFavorite)
                 }
                 .show()
         }
@@ -331,7 +328,6 @@ class MainActivity : AppCompatActivity() {
                             longitude = point.longitude(),
                             isAlertPoint = isAlertPoint
                         )
-
                         dataBase.saveFavoritePoint(favorite)
 
                         if (isAlertPoint) {
@@ -339,15 +335,12 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             addMarker(point.longitude(), point.latitude())
                         }
-
                         loadFavoritesFromDatabase()
                     }
                 }
-
                 builder.setNegativeButton("Cancelar") { dialog, _ ->
                     dialog.cancel()
                 }
-
                 builder.show()
             }
             .setNegativeButton("Cancelar", null)
@@ -358,14 +351,14 @@ class MainActivity : AppCompatActivity() {
     * Este método se encarga de agregar un marcador tipo alerta definido por el usuario en el mapa.
     * */
     private fun addAlertMarker(longitude: Double, latitude: Double) {
-        val annotationApi = mapView.annotations
-        val pointAnnotationManager = annotationApi.createPointAnnotationManager()
+        val annotationInstance = mapView.annotations
+        val pointAnnotationManager = annotationInstance.createPointAnnotationManager()
 
-        val bitmap = (ResourcesCompat.getDrawable(resources, R.drawable.yellow_marker, null) as BitmapDrawable).bitmap
+        val markerImage = (ResourcesCompat.getDrawable(resources, R.drawable.yellow_marker, null) as BitmapDrawable).bitmap
 
         val pointAnnotationOptions = PointAnnotationOptions()
             .withPoint(PointMap.fromLngLat(longitude, latitude))
-            .withIconImage(bitmap)
+            .withIconImage(markerImage)
 
         val annotation = pointAnnotationManager.create(pointAnnotationOptions)
 
@@ -378,17 +371,17 @@ class MainActivity : AppCompatActivity() {
     * */
     private fun setupPulseAnimation(annotation: PointAnnotation, manager: PointAnnotationManager) {
         val handler = Handler(Looper.getMainLooper())
-        val pulseRunnable = object : Runnable {
+        val pulse = object : Runnable {
             private var scale = 1.0
-            private var increasing = true
+            private var aument = true
 
             override fun run() {
-                if (increasing) {
+                if (aument) {
                     scale += 0.05
-                    if (scale >= 1.5) increasing = false
+                    if (scale >= 1.5) aument = false
                 } else {
                     scale -= 0.05
-                    if (scale <= 1.0) increasing = true
+                    if (scale <= 1.0) aument = true
                 }
 
                 annotation.iconSize = scale
@@ -397,7 +390,7 @@ class MainActivity : AppCompatActivity() {
                 handler.postDelayed(this, 50)
             }
         }
-        handler.post(pulseRunnable)
+        handler.post(pulse)
     }
 
     /**
